@@ -64,10 +64,7 @@ class BelongsToManyOrigin extends EloquentBelongsToMany
                 ],
             ])
             ->addPipelineStage([
-                '$unwind' => [
-                    'path' => '$pivot',
-                    'preserveNullAndEmptyArrays' => true,
-                ],
+                '$unwind' => '$pivot',
             ]);
     }
 
