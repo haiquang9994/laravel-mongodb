@@ -11,6 +11,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Str;
 use Jenssegers\Mongodb\Query\Builder as QueryBuilder;
+use Jenssegers\Mongodb\Relations\Pivot;
 use MongoDB\BSON\Binary;
 use MongoDB\BSON\ObjectID;
 use MongoDB\BSON\UTCDateTime;
@@ -420,6 +421,22 @@ abstract class Model extends BaseModel
         $connection = $this->getConnection();
 
         return new QueryBuilder($connection, $connection->getPostProcessor());
+    }
+
+    /**
+     * Create a new pivot model instance.
+     *
+     * @param  \Illuminate\Database\Eloquent\Model  $parent
+     * @param  array  $attributes
+     * @param  string  $table
+     * @param  bool  $exists
+     * @param  string|null  $using
+     * @return \Illuminate\Database\Eloquent\Relations\Pivot
+     */
+    public function newPivot(BaseModel $parent, array $attributes, $table, $exists, $using = null)
+    {
+        return $using ? $using::fromRawAttributes($parent, $attributes, $table, $exists)
+            : Pivot::fromAttributes($parent, $attributes, $table, $exists);
     }
 
     /**
