@@ -306,8 +306,13 @@ class Builder extends BaseBuilder
             $pipeline = [];
 
             if ($this->pipelineStages) {
-                foreach ($this->pipelineStages as $stage) {
-                    $pipeline[] = $stage;
+                foreach ($this->pipelineStages as $item) {
+                    list($method, $stage) = $item;
+                    if ($method !== 'unset') {
+                        $pipeline[] = [
+                            '$' . $method => $stage,
+                        ];
+                    }
                 }
             }
 
@@ -336,6 +341,17 @@ class Builder extends BaseBuilder
             }
             if ($this->projections) {
                 $pipeline[] = ['$project' => $this->projections];
+            }
+
+            if ($this->pipelineStages) {
+                foreach ($this->pipelineStages as $item) {
+                    list($method, $stage) = $item;
+                    if ($method === 'unset') {
+                        $pipeline[] = [
+                            '$unset' => $stage,
+                        ];
+                    }
+                }
             }
 
             $options = [
@@ -453,9 +469,9 @@ class Builder extends BaseBuilder
      * Add a pipeline stage.
      * @return $this
      */
-    public function addPipelineStage(array $stage)
+    public function addPipelineStage(string $method, $stage)
     {
-        $this->pipelineStages[] = $stage;
+        $this->pipelineStages[] = [$method, $stage];
         return $this;
     }
 

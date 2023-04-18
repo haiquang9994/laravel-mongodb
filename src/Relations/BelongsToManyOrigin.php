@@ -44,28 +44,24 @@ class BelongsToManyOrigin extends EloquentBelongsToMany
         $foreignPivotKey = $this->getQualifiedForeignPivotKeyName();
 
         $this->query
-            ->addPipelineStage([
-                '$lookup' => [
-                    'from' => $this->table,
-                    'let' => ['pid' => '$_id'],
-                    'pipeline' => [
-                        [
-                            '$match' => [
-                                '$expr' => [
-                                    '$eq' => [
-                                        ['$toObjectId' => '$' . $relatedPivotKey], '$$pid'
-                                    ]
-                                ],
-                                "$foreignPivotKey" => $this->parent->getKey(),
+            ->addPipelineStage('lookup', [
+                'from' => $this->table,
+                'let' => ['pid' => '$_id'],
+                'pipeline' => [
+                    [
+                        '$match' => [
+                            '$expr' => [
+                                '$eq' => [
+                                    ['$toObjectId' => '$' . $relatedPivotKey], '$$pid'
+                                ]
                             ],
-                        ]
-                    ],
-                    'as' => 'pivot',
+                            "$foreignPivotKey" => $this->parent->getKey(),
+                        ],
+                    ]
                 ],
+                'as' => 'pivot',
             ])
-            ->addPipelineStage([
-                '$unwind' => '$pivot',
-            ]);
+            ->addPipelineStage('unwind', '$pivot');
     }
 
     /**
@@ -90,12 +86,8 @@ class BelongsToManyOrigin extends EloquentBelongsToMany
         }
 
         $this->query
-            ->addPipelineStage([
-                '$addFields' => $addFields,
-            ])
-            ->addPipelineStage([
-                '$unset' => 'pivot',
-            ]);
+            ->addPipelineStage('addFields', $addFields)
+            ->addPipelineStage('unset', 'pivot');
 
         return parent::get($columns);
     }
@@ -123,5 +115,16 @@ class BelongsToManyOrigin extends EloquentBelongsToMany
     public function getQualifiedRelatedPivotKeyName()
     {
         return $this->relatedPivotKey;
+    }
+
+    /**
+     * Qualify the given column name by the pivot table.
+     *
+     * @param string $column
+     * @return string
+     */
+    public function qualifyPivotColumn($column)
+    {
+        return 'pivot.' . $column;
     }
 }
