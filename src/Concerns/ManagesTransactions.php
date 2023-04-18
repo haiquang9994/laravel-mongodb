@@ -14,7 +14,7 @@ use Throwable;
  */
 trait ManagesTransactions
 {
-    protected $session = null;
+    protected ?Session $session = null;
 
     protected $transactions = 0;
 
@@ -23,7 +23,7 @@ trait ManagesTransactions
      */
     abstract public function getMongoClient();
 
-    public function getSession()
+    public function getSession(): ?Session
     {
         return $this->session;
     }
@@ -48,25 +48,38 @@ trait ManagesTransactions
         return $session;
     }
 
-    public function beginTransaction(array $options = [])
+    /**
+     * Starts a transaction on the active session. An active session will be created if none exists.
+     */
+    public function beginTransaction(array $options = []): void
     {
         $this->getSessionOrCreate()->startTransaction($options);
         $this->transactions = 1;
     }
 
-    public function commit()
+    /**
+     * Commit transaction in this session.
+     */
+    public function commit(): void
     {
         $this->getSessionOrThrow()->commitTransaction();
         $this->transactions = 0;
     }
 
-    public function rollBack($toLevel = null)
+    /**
+     * Abort transaction in this session.
+     */
+    public function rollBack($toLevel = null): void
     {
         $this->getSessionOrThrow()->abortTransaction();
         $this->transactions = 0;
     }
 
-    public function transaction(Closure $callback, $attempts = 1, array $options = [])
+    /**
+     * Static transaction function realize the with_transaction functionality provided by MongoDB.
+     * @param int $attempts
+     */
+    public function transaction(Closure $callback, $attempts = 1, array $options = []): mixed
     {
         $attemptsLeft = $attempts;
         $callbackResult = null;
