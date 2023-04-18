@@ -450,6 +450,10 @@ class Builder extends BaseBuilder
         return md5(serialize(array_values($key)));
     }
 
+    /**
+     * Add a pipeline stage.
+     * @return $this
+     */
     public function addPipelineStage(array $stage)
     {
         $this->pipelineStages[] = $stage;

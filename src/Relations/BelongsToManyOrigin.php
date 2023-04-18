@@ -43,53 +43,62 @@ class BelongsToManyOrigin extends EloquentBelongsToMany
         $relatedPivotKey = $this->getQualifiedRelatedPivotKeyName();
         $foreignPivotKey = $this->getQualifiedForeignPivotKeyName();
 
-        $this->query->addPipelineStage([
-            '$addFields' => [
-                'id' => [
-                    '$toString' => '$_id',
+        $this->query
+            ->addPipelineStage([
+                '$lookup' => [
+                    'from' => $this->table,
+                    'let' => ['pid' => '$_id'],
+                    'pipeline' => [
+                        [
+                            '$match' => [
+                                '$expr' => [
+                                    '$eq' => [
+                                        ['$toObjectId' => '$' . $relatedPivotKey], '$$pid'
+                                    ]
+                                ],
+                                "$foreignPivotKey" => $this->parent->getKey(),
+                            ],
+                        ]
+                    ],
+                    'as' => 'pivot',
                 ],
-            ],
-        ])->addPipelineStage([
-            '$lookup' => [
-                'from' => $this->table,
-                'localField' => 'id',
-                'foreignField' => $relatedPivotKey,
-                'as' => 'pivot',
-            ],
-        ])->addPipelineStage([
-            '$unwind' => [
-                'path' => '$pivot',
-                'preserveNullAndEmptyArrays' => true,
-            ],
-        ])->addPipelineStage([
-            '$addFields' => [
-                "pivot_$relatedPivotKey" => '$pivot.' . $relatedPivotKey,
-                "pivot_$foreignPivotKey" => '$pivot.' . $foreignPivotKey,
-            ],
-        ])->addPipelineStage([
-            '$match' => [
-                "pivot.$foreignPivotKey" => $this->parent->getKey(),
-            ],
-        ])->addPipelineStage([
-            '$unset' => 'id',
-        ]);
+            ])
+            ->addPipelineStage([
+                '$unwind' => [
+                    'path' => '$pivot',
+                    'preserveNullAndEmptyArrays' => true,
+                ],
+            ]);
     }
 
+    /**
+     * Execute the query as a "select" statement.
+     * @param array $columns
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
     public function get($columns = ['*'])
     {
+        $relatedPivotKey = $this->getQualifiedRelatedPivotKeyName();
+        $foreignPivotKey = $this->getQualifiedForeignPivotKeyName();
+
+        $addFields = [
+            "pivot_$relatedPivotKey" => '$pivot.' . $relatedPivotKey,
+            "pivot_$foreignPivotKey" => '$pivot.' . $foreignPivotKey,
+        ];
+
         if ($this->pivotColumns) {
-            $addFields = [];
             foreach ($this->pivotColumns as $column) {
                 $addFields["pivot_$column"] = '$pivot.' . $column;
             }
-
-            $this->query->addPipelineStage([
-                '$addFields' => $addFields,
-            ]);
         }
-        $this->query->addPipelineStage([
-            '$unset' => 'pivot',
-        ]);
+
+        $this->query
+            ->addPipelineStage([
+                '$addFields' => $addFields,
+            ])
+            ->addPipelineStage([
+                '$unset' => 'pivot',
+            ]);
 
         return parent::get($columns);
     }
