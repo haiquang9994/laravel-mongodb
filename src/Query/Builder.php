@@ -38,7 +38,7 @@ class Builder extends BaseBuilder
      * The pipeline stages.
      * @var array
      */
-    public $pipelineStages;
+    public $pipelineStages = [];
 
     /**
      * The cursor timeout value.
@@ -133,7 +133,6 @@ class Builder extends BaseBuilder
         $this->grammar = new Grammar;
         $this->connection = $connection;
         $this->processor = $processor;
-        $this->pipelineStages = [];
     }
 
     /**
