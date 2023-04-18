@@ -35,6 +35,12 @@ class Builder extends BaseBuilder
     public $projections;
 
     /**
+     * The pipeline stages.
+     * @var array
+     */
+    public $pipelineStages;
+
+    /**
      * The cursor timeout value.
      * @var int
      */
@@ -127,6 +133,7 @@ class Builder extends BaseBuilder
         $this->grammar = new Grammar;
         $this->connection = $connection;
         $this->processor = $processor;
+        $this->pipelineStages = [];
     }
 
     /**
@@ -227,7 +234,7 @@ class Builder extends BaseBuilder
         $wheres = $this->compileWheres();
 
         // Use MongoDB's aggregation framework when using grouping or aggregation functions.
-        if ($this->groups || $this->aggregate) {
+        if ($this->groups || $this->aggregate || $this->pipelineStages) {
             $group = [];
             $unwinds = [];
 
@@ -298,6 +305,13 @@ class Builder extends BaseBuilder
 
             // Build the aggregation pipeline.
             $pipeline = [];
+
+            if ($this->pipelineStages) {
+                foreach ($this->pipelineStages as $stage) {
+                    $pipeline[] = $stage;
+                }
+            }
+
             if ($wheres) {
                 $pipeline[] = ['$match' => $wheres];
             }
@@ -434,6 +448,12 @@ class Builder extends BaseBuilder
         ];
 
         return md5(serialize(array_values($key)));
+    }
+
+    public function addPipelineStage(array $stage)
+    {
+        $this->pipelineStages[] = $stage;
+        return $this;
     }
 
     /**
@@ -1064,7 +1084,7 @@ class Builder extends BaseBuilder
      * @param array $where
      * @return mixed
      */
-    protected function compileWhereNested(array $where): mixed
+    protected function compileWhereNested(array $where)
     {
         extract($where);
 
@@ -1224,7 +1244,7 @@ class Builder extends BaseBuilder
      * @param array $where
      * @return mixed
      */
-    protected function compileWhereRaw(array $where): mixed
+    protected function compileWhereRaw(array $where)
     {
         return $where['sql'];
     }
