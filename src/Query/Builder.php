@@ -116,7 +116,7 @@ class Builder extends BaseBuilder
      * @var array
      */
     protected $conversion = [
-        '=' => '=',
+        '=' => '$eq',
         '!=' => '$ne',
         '<>' => '$ne',
         '<' => '$lt',
@@ -268,27 +268,7 @@ class Builder extends BaseBuilder
                         $column = implode('.', $splitColumns);
                     }
 
-                    // Null coalense only > 7.2
-
-                    $aggregations = blank($this->aggregate['columns']) ? [] : $this->aggregate['columns'];
-
-                    if (in_array('*', $aggregations) && $function == 'count') {
-                        // When ORM is paginating, count doesnt need a aggregation, just a cursor operation
-                        // elseif added to use this only in pagination
-                        // https://docs.mongodb.com/manual/reference/method/cursor.count/
-                        // count method returns int
-
-                        $totalResults = $this->collection->count($wheres);
-                        // Preserving format expected by framework
-                        $results = [
-                            [
-                                '_id'       => null,
-                                'aggregate' => $totalResults,
-                            ],
-                        ];
-
-                        return new Collection($results);
-                    } elseif ($function == 'count') {
+                    if ($function == 'count') {
                         // Translate count into sum.
                         $group['aggregate'] = ['$sum' => 1];
                     } else {
@@ -1197,10 +1177,27 @@ class Builder extends BaseBuilder
     {
         extract($where);
 
-        $where['operator'] = $operator;
-        $where['value'] = $value;
+        if ($value instanceof UTCDateTime) {
+            $value = $value->toDateTime()->setTimezone(new \DateTimeZone(date_default_timezone_get()))->format('Y-m-d');
+        }
 
-        return $this->compileWhereBasic($where);
+        if ($operator = $this->conversion[$operator] ?? null) {
+            return [
+                '$expr' => [
+                    $operator => [
+                        [
+                            '$dateToString' => [
+                                'format' => '%Y-%m-%d',
+                                'date' => "$$column",
+                                'timezone' => date_default_timezone_get(),
+                            ],
+                        ],
+                        $value
+                    ],
+                ],
+            ];
+        }
+        return [];
     }
 
     /**
@@ -1211,10 +1208,11 @@ class Builder extends BaseBuilder
     {
         extract($where);
 
-        $where['operator'] = $operator;
-        $where['value'] = $value;
+        if ($value instanceof UTCDateTime) {
+            $value = $value->toDateTime()->setTimezone(new \DateTimeZone(date_default_timezone_get()))->format('m');
+        }
 
-        return $this->compileWhereBasic($where);
+        return $this->getCompiledWhereDatePart('$month', $column, $operator, $value);
     }
 
     /**
@@ -1225,10 +1223,11 @@ class Builder extends BaseBuilder
     {
         extract($where);
 
-        $where['operator'] = $operator;
-        $where['value'] = $value;
+        if ($value instanceof UTCDateTime) {
+            $value = $value->toDateTime()->setTimezone(new \DateTimeZone(date_default_timezone_get()))->format('d');
+        }
 
-        return $this->compileWhereBasic($where);
+        return $this->getCompiledWhereDatePart('$dayOfMonth', $column, $operator, $value);
     }
 
     /**
@@ -1239,10 +1238,36 @@ class Builder extends BaseBuilder
     {
         extract($where);
 
-        $where['operator'] = $operator;
-        $where['value'] = $value;
+        if ($value instanceof UTCDateTime) {
+            $value = $value->toDateTime()->setTimezone(new \DateTimeZone(date_default_timezone_get()))->format('Y');
+        }
 
-        return $this->compileWhereBasic($where);
+        return $this->getCompiledWhereDatePart('$year', $column, $operator, $value);
+    }
+
+    /**
+     * @param array $where
+     * @return array
+     */
+    private function getCompiledWhereDatePart($function, $column, $operator, $value): array
+    {
+        if ($operator = $this->conversion[$operator] ?? null) {
+            return [
+                '$expr' => [
+                    $operator => [
+                        [
+                            $function => [
+                                'date' => "$$column",
+                                'timezone' => date_default_timezone_get(),
+                            ],
+                        ],
+                        intval($value)
+                    ],
+                ],
+            ];
+        }
+
+        return [];
     }
 
     /**
@@ -1253,10 +1278,27 @@ class Builder extends BaseBuilder
     {
         extract($where);
 
-        $where['operator'] = $operator;
-        $where['value'] = $value;
+        if ($value instanceof UTCDateTime) {
+            $value = $value->toDateTime()->setTimezone(new \DateTimeZone(date_default_timezone_get()))->format('H:i:s');
+        }
 
-        return $this->compileWhereBasic($where);
+        if ($operator = $this->conversion[$operator] ?? null) {
+            return [
+                '$expr' => [
+                    $operator => [
+                        [
+                            '$dateToString' => [
+                                'format' => '%H:%M:%S',
+                                'date' => "$$column",
+                                'timezone' => date_default_timezone_get(),
+                            ],
+                        ],
+                        $value
+                    ],
+                ],
+            ];
+        }
+        return [];
     }
 
     /**
