@@ -127,4 +127,37 @@ class BelongsToManyOrigin extends EloquentBelongsToMany
     {
         return 'pivot.' . $column;
     }
+
+    /**
+     * Set the constraints for an eager load of the relation.
+     *
+     * @param  array  $models
+     * @return void
+     */
+    public function addEagerConstraints(array $models)
+    {
+        $relatedPivotKey = $this->getQualifiedRelatedPivotKeyName();
+        $foreignPivotKey = $this->getQualifiedForeignPivotKeyName();
+        $keys = $this->getKeys($models, $this->parentKey);
+
+        $this->query
+            ->addPipelineStage('lookup', [
+                'from' => $this->table,
+                'let' => ['pid' => '$_id'],
+                'pipeline' => [
+                    [
+                        '$match' => [
+                            '$expr' => [
+                                '$eq' => [
+                                    ['$toObjectId' => '$' . $relatedPivotKey], '$$pid'
+                                ]
+                            ],
+                            "$foreignPivotKey" => ['$in' => $keys],
+                        ],
+                    ]
+                ],
+                'as' => 'pivot',
+            ])
+            ->addPipelineStage('unwind', '$pivot');
+    }
 }
