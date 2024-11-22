@@ -79,7 +79,7 @@ trait ManagesTransactions
      * Static transaction function realize the with_transaction functionality provided by MongoDB.
      * @param int $attempts
      */
-    public function transaction(Closure $callback, $attempts = 1, array $options = []): mixed
+    public function transaction(Closure $callback, $attempts = 1, array $options = [])
     {
         $attemptsLeft = $attempts;
         $callbackResult = null;

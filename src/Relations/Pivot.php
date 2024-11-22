@@ -24,7 +24,7 @@ class Pivot extends EloquentPivot
             $value = parent::asDateTime($value);
         }
 
-        return new UTCDateTime($value->format('Uv'));
+        return new UTCDateTime((int)$value->format('Uv'));
     }
 
     /**

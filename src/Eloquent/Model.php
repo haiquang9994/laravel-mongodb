@@ -90,7 +90,7 @@ abstract class Model extends BaseModel
             $value = parent::asDateTime($value);
         }
 
-        return new UTCDateTime($value->format('Uv'));
+        return new UTCDateTime((int)$value->format('Uv'));
     }
 
     /**
@@ -125,7 +125,7 @@ abstract class Model extends BaseModel
      */
     public function freshTimestamp()
     {
-        return new UTCDateTime(Date::now()->format('Uv'));
+        return new UTCDateTime((int)Date::now()->format('Uv'));
     }
 
     /**
